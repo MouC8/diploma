@@ -22,8 +22,8 @@ import { LegacyController } from './legacy/legacy.controller';
         name: 'DIPLOMA_SERVICE',
         transport: Transport.RMQ,
         options: {
-          urls: [process.env.RABBITMQ_URL || 'amqp://localhost:5672'],
-          queue: 'diploma_commands',
+          urls: ['amqp://guest:guest@127.0.0.1:5672'],
+          queue: 'diploma_uploaded_queue',
           queueOptions: { durable: true },
         },
       },

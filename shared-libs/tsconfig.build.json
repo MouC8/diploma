@@ -1,4 +1,23 @@
 {
-  "extends": "./tsconfig.json",
-  "exclude": ["node_modules", "test", "dist", "**/*spec.ts"]
+  "compilerOptions": {
+    "module": "commonjs",
+    "target": "es2021",
+    "declaration": true,
+    "rootDir": "src",
+    "outDir": "dist",
+    "removeComments": true,
+    "skipLibCheck": true
+  },
+  "include": [
+    "src/index.ts",      // votre barrel
+    "src/dto/**/*.ts"    // uniquement les DTOs
+  ],
+  "exclude": [
+    "src/app.controller.ts",
+    "src/main.ts",
+    "src/**/*.module.ts",
+    "src/**/*.spec.ts",
+    "node_modules",
+    "dist"
+  ]
 }

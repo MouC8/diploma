@@ -3,6 +3,7 @@ import * as Tesseract from 'tesseract.js';
 import { ClientProxy } from '@nestjs/microservices';
 import { firstValueFrom } from 'rxjs';
 import { OcrResultDto } from './dto/ocr-result.dto';
+import { OCR_SERVICE } from '../constants';
 
 @Injectable()
 export class OcrService {
@@ -10,9 +11,15 @@ export class OcrService {
   private readonly logger = new Logger(OcrService.name);
 
   constructor(
-    @Inject('OCR_EVENTS') private readonly client: ClientProxy,
+    @Inject('OCR_SERVICE') private readonly client: ClientProxy,
   ) {}
 
+  async extractTextAndSave(data: { id: string; resultPath: string }) {
+    this.logger.log(`Extracting OCR for ${data.id}`);
+    // … appel OCR, sauvegarde en base …
+    // (Optionnel : émettre un event de résultat)
+    // await this.client.emit('diploma.ocr.completed', { id: data.id, text: '...' });
+  }
   async extractText(imagePath: string): Promise<OcrResultDto> {
     this.logger.log(`Performing OCR on ${imagePath}`);
     const { data } = await Tesseract.recognize(imagePath, 'fra', {

@@ -23,11 +23,11 @@ import { DiplomasService } from './diplomas/diplomas.service';
     // RabbitMQ client to emit events
     ClientsModule.register([
       {
-        name: 'RESULTS_SERVICE',
+        name: 'OCR_SERVICE',
         transport: Transport.RMQ,
         options: {
-          urls: [process.env.RABBITMQ_URL || 'amqp://127.0.0.1:5672'],
-          queue: 'diploma_events',
+          urls: [process.env.RABBITMQ_URL || 'amqp://guest:guest@127.0.0.1:5672'],
+          queue: 'diploma_uploaded_queue',
           queueOptions: { durable: true },
         },
       },

@@ -1,12 +1,14 @@
 {
-  "name": "shared-libs",
+  "name": "@shared-libs/dto",
   "version": "0.0.1",
   "description": "",
   "author": "",
   "private": true,
   "license": "UNLICENSED",
+  "main": "dist/index.js",
+  "types": "dist/index.d.ts",
   "scripts": {
-    "build": "nest build",
+    "build": "tsc -p tsconfig.build.json",
     "format": "prettier --write \"src/**/*.ts\" \"test/**/*.ts\"",
     "start": "nest start",
     "start:dev": "nest start --watch",
@@ -27,7 +29,9 @@
     "amqp-connection-manager": "^4.1.14",
     "amqplib": "^0.10.8",
     "reflect-metadata": "^0.2.2",
-    "rxjs": "^7.8.1"
+    "rxjs": "^7.8.1",
+    "class-transformer": "^0.5.1",
+    "class-validator": "^0.14.2"
   },
   "devDependencies": {
     "@eslint/eslintrc": "^3.2.0",

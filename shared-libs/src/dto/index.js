@@ -1,3 +1,4 @@
-"use strict";
-Object.defineProperty(exports, "__esModule", { value: true });
-//# sourceMappingURL=index.js.map
+// shared-libs/src/index.ts
+export * from './dto/create-diploma.dto';
+export * from './dto/ocr-result.dto';
+export * from './dto/diploma-uploaded-payload.dto';

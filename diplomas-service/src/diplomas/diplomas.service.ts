@@ -1,4 +1,4 @@
-import { Injectable, Logger, Inject } from '@nestjs/common';
+import { Injectable, Logger, Inject, NotFoundException } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 import { DiplomaEntity } from 'src/entities/diploma.entity';
@@ -9,7 +9,7 @@ import {
   OcrResultDto,
   QrGeneratedPayload,
   ImageProcessedPayload
-} from '../../../shared-libs/src/dto/index';
+} from '@shared-libs/dto/dist/dto';
 
 @Injectable()
 export class DiplomasService {
@@ -18,8 +18,10 @@ export class DiplomasService {
   constructor(
     @InjectRepository(DiplomaEntity)
     private diplomaRepo: Repository<DiplomaEntity>,
-    @Inject('RESULTS_SERVICE') private readonly client: ClientProxy,
+
+    @Inject('OCR_SERVICE') private readonly ocrClient: ClientProxy,
   ) {}
+  
 // RPC pour GET /api/legacy/:id
 @MessagePattern('legacy.get')
 async rpcGetLegacy(id: string): Promise<DiplomaEntity | null> {
@@ -44,7 +46,11 @@ async onLegacyOcrCompleted(
   @Ctx() ctx: RmqContext,
 ) {
   this.logger.log(`legacy.ocr.completed for ${dto.id}`);
-  await this.updateWithOcrData(dto.id, dto);
+  await this.updateWithOcrData(dto.id, {
+    ...dto,
+    nom: dto.nom ?? undefined,
+    prenom: dto.prenom ?? undefined,
+  });
   ctx.getChannelRef().ack(ctx.getMessage());
 }
 
@@ -56,7 +62,7 @@ async onLegacyQrRequested(
 ) {
   this.logger.log(`legacy.qr.requested for ${id}`);
   // forward to QR service
-  await firstValueFrom(this.client.emit('legacy.qr.generate', { id }));
+  await firstValueFrom(this.ocrClient.emit('legacy.qr.generate', { id }));
   ctx.getChannelRef().ack(ctx.getMessage());
 }
 
@@ -86,10 +92,24 @@ async onLegacyImageProcessed(
   ctx.getChannelRef().ack(ctx.getMessage());
 }
 
+
+@EventPattern('diploma.uploaded.processed')
+async handleOcrResult(
+  @Payload() result: OcrResultDto,
+  @Ctx() ctx: RmqContext,
+) {
+  this.logger.log(`Received OCR result for id=${result.id}`);
+  await this.diplomaRepo.update(result.id, { /* … mapping des champs OCR …*/ });
+  ctx.getChannelRef().ack(ctx.getMessage());
+}
+
   /**
    * Traitement initial du fichier uploadé ou legacy upload
    */
-  async processUpload(data: { id?: string; filename: string; path: string; legacy?: boolean }): Promise<DiplomaEntity> {
+  async processUpload(data: { id?: string; filename: string; path: string; legacy?: boolean }): Promise<DiplomaEntity> 
+  
+  // async processUpload(payload: DiplomaUploadedPayload): Promise<DiplomaEntity>
+  {
     const base = process.env.VERIFICATION_BASE_URL || 'http://localhost:4000/api/diplomas/view';
     const rec = this.diplomaRepo.create({
       id: data.id, // si legacy, on réutilise l'id fourni
@@ -114,7 +134,14 @@ async onLegacyImageProcessed(
     const saved = await this.diplomaRepo.save(rec);
     saved.urlVerification = `${base}/${saved.id}`;
     await this.diplomaRepo.save(saved);
-    await firstValueFrom(this.client.emit(data.legacy ? 'legacy.uploaded.processed' : 'diploma.uploaded.processed', saved));
+    // await firstValueFrom(this.client.emit(data.legacy ? 'legacy.uploaded.processed' : 'diploma.uploaded.processed', saved));
+    await firstValueFrom(
+      this.ocrClient.emit<DiplomaUploadedPayload>(
+        'diploma.uploaded', 
+        { id: saved.id, path: saved.cheminImageSource },
+      ),
+    );
+    this.logger.log(`Emitted diploma.uploaded for id=${saved.id}`);
     return saved;
   }
 
@@ -143,7 +170,7 @@ async onLegacyImageProcessed(
     const saved = await this.diplomaRepo.save(rec);
     saved.urlVerification = `${base}/${saved.id}`;
     await this.diplomaRepo.save(saved);
-    await firstValueFrom(this.client.emit('diploma.created', saved));
+    await firstValueFrom(this.ocrClient.emit('diploma.created', saved));
     return saved;
   }
 
@@ -152,14 +179,18 @@ async onLegacyImageProcessed(
    */
   async updateWithOcrData(id: string, ocrData: Partial<DiplomaEntity>): Promise<DiplomaEntity> {
     await this.diplomaRepo.update(id, { ...ocrData, legacyValidated: true });
-    return this.diplomaRepo.findOneBy({ id });
+    const diploma = await this.diplomaRepo.findOneBy({ id });
+if (!diploma) {
+  throw new NotFoundException(`Diplôme avec l'id ${id} non trouvé`);
+}
+return diploma;
   }
 
   /**
    * Emission d'un event vers le service QR
    */
   private async emitToQrService(pattern: string, payload: any) {
-    await firstValueFrom(this.client.emit(pattern, payload));
+    await firstValueFrom(this.ocrClient.emit(pattern, payload));
     this.logger.log(`Emitted ${pattern} with payload ${JSON.stringify(payload)}`);
   }
 
@@ -167,7 +198,7 @@ async onLegacyImageProcessed(
    * Emission d'un event vers le service Image
    */
   private async emitToImageService(pattern: string, payload: any) {
-    await firstValueFrom(this.client.emit(pattern, payload));
+    await firstValueFrom(this.ocrClient.emit(pattern, payload));
     this.logger.log(`Emitted ${pattern} with payload ${JSON.stringify(payload)}`);
   }
 
@@ -179,7 +210,11 @@ async onLegacyImageProcessed(
       urlVerification: qrData.urlVerification,
       qrCodeData: qrData.qrCodeData,
     });
-    return this.diplomaRepo.findOneBy({ id });
+    const diploma = await this.diplomaRepo.findOneBy({ id });
+if (!diploma) {
+  throw new NotFoundException(`Diplôme avec l'id ${id} non trouvé`);
+}
+return diploma;
   }
 
   /**
@@ -189,7 +224,11 @@ async onLegacyImageProcessed(
     await this.diplomaRepo.update(id, {
       cheminImageModifiee: imageData.cheminImageModifiee,
     });
-    return this.diplomaRepo.findOneBy({ id });
+    const diploma = await this.diplomaRepo.findOneBy({ id });
+    if (!diploma) {
+      throw new NotFoundException(`Diplôme avec l'id ${id} non trouvé`);
+    }
+    return diploma;
   }
 
   // EventPattern handlers

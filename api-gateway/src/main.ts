@@ -27,9 +27,7 @@ async function bootstrap() {
   const document = SwaggerModule.createDocument(app, config);
   SwaggerModule.setup('api/docs', app, document);
 
-  app.enableCors();
-  await app.listen(4000);
-  console.log('API Gateway HTTP listening on http://localhost:4000');
+ 
 
   // 5. Microservice RMQ
   app.connectMicroservice({
@@ -44,6 +42,10 @@ async function bootstrap() {
 
   await app.startAllMicroservices();
   console.log('Connected to RabbitMQ');
+  app.enableCors();
+  await app.listen(4000);
+  console.log('API Gateway HTTP listening on http://localhost:4000');
+
 }
 bootstrap();
 

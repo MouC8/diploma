@@ -6,7 +6,7 @@ import { ClientProxy } from '@nestjs/microservices';
 import { Inject } from '@nestjs/common';
 import { firstValueFrom } from 'rxjs';
 import { DiplomaEntity } from '../entities/diploma.entity';
-import { DiplomaUploadedPayload, OcrResultDto } from '@shared-libs/dto';
+import { DiplomaUploadedPayload, OcrResultDto } from '@shared-libs/dto/dist/dto';
 
 @Controller('api/legacy')
 export class LegacyController {
